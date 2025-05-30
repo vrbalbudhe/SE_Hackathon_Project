@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Home, User, Settings, Archive, Users, BarChart3 } from "lucide-react";
 
-function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
+function AdminSidebar({ selectedIcon, setSelectedIcon }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -32,7 +32,7 @@ function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
           <li
             onClick={() => setSelectedIcon(item.label)}
             key={index}
-            className={`flex ${isCollapsed ? "justify-center" : ""} cursor-pointer items-center space-x-4`}
+            className={`flex ${isCollapsed ? "justify-center" : ""} cursor-pointer items-center space-x-4 hover:bg-gray-100 p-2 rounded transition-colors`}
           >
             <span
               className={`flex items-center ${selectedIcon === item.label ? "text-blue-700" : "text-gray-600"}`}
@@ -45,7 +45,7 @@ function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
               <span
                 className={
                   selectedIcon === item.label
-                    ? "text-blue-700"
+                    ? "text-blue-700 font-medium"
                     : "text-gray-600"
                 }
               >
@@ -59,4 +59,4 @@ function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
   );
 }
 
-export default ProfileSidebar;
+export default AdminSidebar;

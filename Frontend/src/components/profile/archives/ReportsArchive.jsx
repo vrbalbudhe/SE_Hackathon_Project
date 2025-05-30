@@ -58,7 +58,7 @@ const ReportsArchive = () => {
       clientIndustry: "Finance",
       createdDate: "2024-05-22",
       type: "Dashboard Design",
-      status: "Completed",
+      satatus: "Completed",
       description:
         "Interactive financial dashboard with real-time analytics and reporting capabilities",
       budget: "$50,000 - $75,000",
