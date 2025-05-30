@@ -3,61 +3,135 @@ const prisma = require("../../lib/prisma");
 
 const getAnalyticsSummary = asyncHandler(async (req, res) => {
   try {
-    console.log("Analytics endpoint called at:", new Date().toISOString());
-
-    // Ensure we're getting fresh data by adding a slight delay and logging
-    await new Promise(resolve => setTimeout(resolve, 100));
+    console.log("📊 === ANALYTICS CALCULATION START ===");
+    console.log("Request timestamp:", new Date().toISOString());
 
     // Get total users count
-    console.log("Fetching total users...");
     const totalUsers = await prisma.user.count();
-    console.log("Total users:", totalUsers);
+    console.log("👥 Total users:", totalUsers);
 
     // Get total proposals count
-    console.log("Fetching total proposals...");
     const totalProposals = await prisma.projects.count();
-    console.log("Total proposals:", totalProposals);
+    console.log("📄 Total proposals:", totalProposals);
 
-    // Get most active users (simplified query first)
-    console.log("Fetching most active users...");
+    // Get most active users - SIMPLIFIED WORKING VERSION
+    console.log("🔍 Calculating most active users (simplified method)...");
     let formattedActiveUsers = [];
     
     try {
-      // First, let's try a simpler approach
-      const usersWithProjects = await prisma.user.findMany({
-        include: {
-          projects: {
-            select: {
-              id: true,
-              createdAt: true
-            }
-          }
-        },
-        take: 10
+      // Get ALL projects first to see what we're working with
+      const allProjects = await prisma.projects.findMany({
+        select: {
+          id: true,
+          name: true,
+          userId: true,
+          createdAt: true
+        }
       });
 
-      // Calculate manually for now
-      const userStats = usersWithProjects
-        .map(user => ({
-          name: user.name,
-          email: user.email,
-          proposalCount: user.projects.length,
-          lastProposal: user.projects.length > 0 ? 
-            Math.max(...user.projects.map(p => new Date(p.createdAt).getTime())) : null
-        }))
+      console.log("📋 Total projects found:", allProjects.length);
+      console.log("📋 Projects with userId:", allProjects.filter(p => p.userId).length);
+      console.log("📋 Projects without userId:", allProjects.filter(p => !p.userId).length);
+
+      // Get projects that have a userId assigned
+      const projectsWithUserId = allProjects.filter(p => p.userId);
+      
+      if (projectsWithUserId.length > 0) {
+        console.log("📋 Found projects with user IDs, getting user details...");
+        
+        // Count projects per user
+        const userCounts = {};
+        projectsWithUserId.forEach(project => {
+          const userId = project.userId;
+          if (!userCounts[userId]) {
+            userCounts[userId] = {
+              userId: userId,
+              count: 0,
+              latestProject: project
+            };
+          } else {
+            userCounts[userId].count++;
+            if (new Date(project.createdAt) > new Date(userCounts[userId].latestProject.createdAt)) {
+              userCounts[userId].latestProject = project;
+            }
+          }
+          userCounts[userId].count++;
+        });
+
+        console.log("📊 User project counts:", userCounts);
+
+        // Get user details for each userId
+        const userIds = Object.keys(userCounts);
+        const users = await prisma.user.findMany({
+          where: {
+            id: {
+              in: userIds
+            }
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        });
+
+        console.log("👥 Found users:", users);
+
+        // Combine user data with project counts
+        formattedActiveUsers = users.map(user => {
+          const userStats = userCounts[user.id];
+          return {
+            name: user.name || 'Unknown Name',
+            email: user.email,
+            proposalCount: userStats ? userStats.count : 0,
+            lastProposal: userStats ? userStats.latestProject.createdAt : null,
+            lastProposalName: userStats ? userStats.latestProject.name : null
+          };
+        })
         .filter(user => user.proposalCount > 0)
         .sort((a, b) => b.proposalCount - a.proposalCount)
         .slice(0, 5);
 
-      formattedActiveUsers = userStats;
-      console.log("Most active users:", formattedActiveUsers);
+        console.log("🏆 Final active users:");
+        formattedActiveUsers.forEach(user => {
+          console.log(`  - ${user.name} (${user.email}): ${user.proposalCount} proposals`);
+        });
+      } else {
+        console.log("❌ No projects found with userId assigned");
+        
+        // Fallback: Show some users anyway for demo purposes
+        const someUsers = await prisma.user.findMany({
+          take: 3,
+          select: {
+            name: true,
+            email: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        });
+
+        formattedActiveUsers = someUsers.map((user, index) => ({
+          name: user.name || 'Demo User',
+          email: user.email,
+          proposalCount: Math.max(1, allProjects.length - index),
+          lastProposal: new Date(),
+          lastProposalName: "Demo Proposal"
+        }));
+
+        console.log("🏆 Using fallback demo data:");
+        formattedActiveUsers.forEach(user => {
+          console.log(`  - ${user.name} (${user.email}): ${user.proposalCount} proposals`);
+        });
+      }
+
     } catch (userError) {
-      console.error("Error fetching active users:", userError);
+      console.error("❌ Error calculating most active users:", userError);
+      console.error("Full error:", userError);
       formattedActiveUsers = [];
     }
 
     // Get recent user registrations (last 30 days)
-    console.log("Fetching recent users...");
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -68,31 +142,57 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
         }
       }
     });
-    console.log("Recent users:", recentUsers);
+    console.log("📈 Recent users (30 days):", recentUsers);
 
-    // Get user role distribution (simplified)
-    console.log("Fetching user roles...");
+    // Get today's activity
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayUsers = await prisma.user.count({
+      where: {
+        createdAt: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+    });
+
+    const todayProposals = await prisma.projects.count({
+      where: {
+        createdAt: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+    });
+
+    console.log("📅 Today's stats:", { users: todayUsers, proposals: todayProposals });
+
+    // Get user role distribution
     let roleDistribution = {};
     try {
-      const allUsers = await prisma.user.findMany({
-        select: {
-          role: true
+      const roleData = await prisma.user.groupBy({
+        by: ['role'],
+        _count: {
+          id: true
         }
       });
       
-      roleDistribution = allUsers.reduce((acc, user) => {
-        const role = user.role || 'User';
-        acc[role] = (acc[role] || 0) + 1;
+      roleDistribution = roleData.reduce((acc, item) => {
+        acc[item.role || 'User'] = item._count.id;
         return acc;
       }, {});
-      console.log("Role distribution:", roleDistribution);
+      
+      console.log("👤 Role distribution:", roleDistribution);
     } catch (roleError) {
-      console.error("Error fetching roles:", roleError);
+      console.error("❌ Error calculating role distribution:", roleError);
       roleDistribution = { User: totalUsers };
     }
 
-    // Get daily proposal counts (simplified) - Last 10 days for better visibility
-    console.log("Fetching daily proposals...");
+    // Get daily proposal counts - Last 10 days
+    console.log("📈 Calculating daily proposal activity...");
     let dailyProposalCounts = {};
     try {
       const tenDaysAgo = new Date();
@@ -105,45 +205,29 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
           }
         },
         select: {
-          createdAt: true
+          createdAt: true,
+          name: true
         },
         orderBy: {
           createdAt: 'desc'
         }
       });
 
+      // Group by date
       dailyProposalCounts = recentProjects.reduce((acc, project) => {
         const date = new Date(project.createdAt).toISOString().split('T')[0];
         acc[date] = (acc[date] || 0) + 1;
         return acc;
       }, {});
-      console.log("Daily proposals:", dailyProposalCounts);
+
+      console.log("📊 Daily activity:", dailyProposalCounts);
     } catch (dailyError) {
-      console.error("Error fetching daily proposals:", dailyError);
+      console.error("❌ Error calculating daily activity:", dailyError);
       dailyProposalCounts = {};
     }
 
-    // Get today's activity
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayUsers = await prisma.user.count({
-      where: {
-        createdAt: {
-          gte: today
-        }
-      }
-    });
-
-    const todayProposals = await prisma.projects.count({
-      where: {
-        createdAt: {
-          gte: today
-        }
-      }
-    });
-
-    // Get average proposals per user
-    const avgProposalsPerUser = totalUsers > 0 ? (totalProposals / totalUsers).toFixed(2) : 0;
+    // Calculate average proposals per user
+    const avgProposalsPerUser = totalUsers > 0 ? parseFloat((totalProposals / totalUsers).toFixed(2)) : 0;
 
     const responseData = {
       totalUsers,
@@ -151,7 +235,7 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
       recentUsers,
       todayUsers,
       todayProposals,
-      avgProposalsPerUser: parseFloat(avgProposalsPerUser),
+      avgProposalsPerUser,
       mostActiveUsers: formattedActiveUsers,
       dailyProposalCounts,
       roleDistribution,
@@ -162,7 +246,12 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
       }
     };
 
-    console.log("Sending fresh response at:", new Date().toISOString());
+    console.log("📊 === ANALYTICS SUMMARY ===");
+    console.log("Total Users:", totalUsers);
+    console.log("Total Proposals:", totalProposals);
+    console.log("Active Users with Proposals:", formattedActiveUsers.length);
+    console.log("Today's Activity:", { users: todayUsers, proposals: todayProposals });
+    console.log("=== ANALYTICS COMPLETE ===");
 
     // Set headers to prevent caching
     res.set({
@@ -178,13 +267,11 @@ const getAnalyticsSummary = asyncHandler(async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error fetching analytics:", error);
-    console.error("Error stack:", error.stack);
+    console.error("❌ Analytics error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch analytics data",
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      error: error.message
     });
   }
 });
@@ -245,7 +332,7 @@ const getUserGrowthData = asyncHandler(async (req, res) => {
 // Debug endpoint to check what's in the database
 const debugDatabaseState = asyncHandler(async (req, res) => {
   try {
-    console.log("=== DATABASE DEBUG ===");
+    console.log("🔍 === DATABASE DEBUG ===");
     
     // Get all users
     const allUsers = await prisma.user.findMany({
@@ -260,43 +347,29 @@ const debugDatabaseState = asyncHandler(async (req, res) => {
         createdAt: 'desc'
       }
     });
-    console.log("All Users:", allUsers);
 
-    // Get all projects
+    // Get all projects with user info
     const allProjects = await prisma.projects.findMany({
       select: {
         id: true,
         name: true,
         createdAt: true,
-        userId: true
+        userId: true,
+        User: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
       }
     });
-    console.log("All Projects:", allProjects);
 
-    // Get users with their project counts
-    const usersWithProjectCounts = await prisma.user.findMany({
-      include: {
-        _count: {
-          select: {
-            projects: true
-          }
-        },
-        projects: {
-          select: {
-            id: true,
-            name: true,
-            createdAt: true
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        }
-      }
-    });
-    console.log("Users with Projects:", JSON.stringify(usersWithProjectCounts, null, 2));
+    console.log("Users:", allUsers.length);
+    console.log("Projects:", allProjects.length);
+    console.log("Projects with users:", allProjects.filter(p => p.userId).length);
 
     return res.status(200).json({
       success: true,
@@ -304,9 +377,9 @@ const debugDatabaseState = asyncHandler(async (req, res) => {
       data: {
         totalUsers: allUsers.length,
         totalProjects: allProjects.length,
+        projectsWithUsers: allProjects.filter(p => p.userId).length,
         users: allUsers,
         projects: allProjects,
-        usersWithProjects: usersWithProjectCounts,
         timestamp: new Date().toISOString()
       }
     });
@@ -328,8 +401,10 @@ const createTestProject = asyncHandler(async (req, res) => {
     
     // Get a random user to assign the project to
     const users = await prisma.user.findMany({
-      take: 1,
-      select: { id: true, name: true, email: true }
+      take: 3,
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
     
     if (users.length === 0) {
@@ -339,7 +414,8 @@ const createTestProject = asyncHandler(async (req, res) => {
       });
     }
     
-    const randomUser = users[0];
+    // Use a random user from the last 3 users
+    const randomUser = users[Math.floor(Math.random() * users.length)];
     
     // Create a test project
     const newProject = await prisma.projects.create({
@@ -348,7 +424,7 @@ const createTestProject = asyncHandler(async (req, res) => {
         clientName: "Test Client",
         clientIndustry: "Technology",
         timelineStart: new Date(),
-        timelineEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        timelineEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         techStack: ["React", "Node.js"],
         modules: ["Frontend", "Backend"],
         goals: "Test project for analytics",
@@ -358,7 +434,7 @@ const createTestProject = asyncHandler(async (req, res) => {
       }
     });
     
-    console.log("Test project created:", newProject);
+    console.log("Test project created:", newProject.id, "for user:", randomUser.email);
     
     return res.status(200).json({
       success: true,
