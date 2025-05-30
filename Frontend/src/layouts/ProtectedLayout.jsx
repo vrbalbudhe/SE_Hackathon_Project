@@ -16,8 +16,8 @@ export const ProtectedLayout = () => {
         <div className="sticky top-0 z-40 w-full">
           <Navbar />
         </div>
-        <div className="flex-grow w-full min-h-screen flex justify-center items-start p-5">
-          <div className="w-[95%] h-full">
+        <div className="flex-grow w-full min-h-screen flex justify-center items-start">
+          <div className="w-[100%] h-full">
             <Outlet />
           </div>
         </div>

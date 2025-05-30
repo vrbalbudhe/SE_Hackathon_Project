@@ -14,6 +14,7 @@ const corsOptions = {
 
 const AuthRoutes = require("./routes/authRoutes/authRoutes");
 const UserRoutes = require("./routes/userRoutes/userRoutes");
+const ProposalRoutes = require("./routes/proposalRoutes/proposalRoutes");
 
 app.use(express.json());
 app.use(cookieParser());
@@ -41,6 +42,7 @@ app.use(passport.session());
 // Routes
 app.use(`${process.env.SITE_ADDRESS || "/api"}/auth`, AuthRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/user`, UserRoutes);
+app.use(`${process.env.SITE_ADDRESS || "/api"}/proposal`, ProposalRoutes);
 
 const port = 8000 || process.env.port;
 const StartConnection = async () => {

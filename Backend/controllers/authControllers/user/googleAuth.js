@@ -10,9 +10,8 @@ const googleAuthCallback = async (req, res) => {
 
     // Generate JWT token
     const payload = {
-      id: user.id,
+      userId: user.id,
       email: user.email,
-      name: user.name,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET || "your-jwt-secret", {

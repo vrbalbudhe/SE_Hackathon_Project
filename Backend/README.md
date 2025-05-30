@@ -21,6 +21,9 @@ SESSION_SECRET="your-secure-session-secret"
 # Frontend URL
 FRONTEND_URL="http://localhost:5173"
 
+# Gemini API Key - Get from Google AI Studio
+GEMINI_API_KEY="your-gemini-api-key"
+
 # Node Environment
 NODE_ENV="development"
 ```
