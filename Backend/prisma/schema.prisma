@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+/**
+ * @Purpose: User Resgistrations
+ * @Parameters:
+ * - id
+ * - name
+ * - email
+ * - password
+ * @Optional:
+ * - avatar
+ * - phone
+ * - otp
+ * @Relations:
+ * (1) one User -> Many Projects
+ */
+model User {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  email    String  @unique
+  name     String
+  password String
+  phone    String? @unique
+  avatar   String?
+  otp      String?
+
+  // Date Metadata
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  projects  Projects[]
+}
+
+/**
+ * @Purpose: Project Registration
+ * @Parameters:
+ * -
+ * @Relations:
+ * - User
+ */
+model Projects {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  clientName     String
+  clientIndustry String
+  timelineStart  DateTime
+  timelineEnd    DateTime
+  techStack      String[]
+  modules        String[]
+  goals          String
+  challenges     String?
+  tone           String
+  proposalType   String?
+  customPrompt   String?
+  latexContent   String
+  budget         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  User   User?   @relation(fields: [userId], references: [id])
+  userId String? @db.ObjectId
+}
