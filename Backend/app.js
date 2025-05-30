@@ -7,6 +7,8 @@ const bodyParser = require("body-parser");
 const session = require("express-session");
 const passport = require("./config/passport");
 
+const AdminRoutes = require("./routes/adminRoutes/adminRoutes");
+
 const corsOptions = {
   origin: process.env.FRONTEND_URL || "http://localhost:5173",
   credentials: true,
@@ -20,6 +22,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(cors(corsOptions));
+
 
 // Session middleware
 app.use(
@@ -43,6 +46,7 @@ app.use(passport.session());
 app.use(`${process.env.SITE_ADDRESS || "/api"}/auth`, AuthRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/user`, UserRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/proposal`, ProposalRoutes);
+app.use(`${process.env.SITE_ADDRESS || "/api"}/admin`, AdminRoutes);
 
 const port = 8000 || process.env.port;
 const StartConnection = async () => {
