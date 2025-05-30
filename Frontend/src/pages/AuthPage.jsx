@@ -11,7 +11,7 @@ function AuthPage() {
   const [error, setError] = useState("");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshLoginContext, currentUser } = useContext(AuthContext);
+  const { refreshLoginContext, currentUser, setCurrentUser } = useContext(AuthContext);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -30,7 +30,11 @@ function AuthPage() {
 
     // Redirect if already logged in
     if (currentUser) {
-      navigate(`/user/${currentUser.id}`);
+      if (currentUser.email === "admin@gmail.com") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate(`/user/${currentUser.id}`);
+      }
     }
   }, [searchParams, currentUser, navigate]);
 
@@ -57,7 +61,12 @@ function AuthPage() {
 
       if (response.data.success) {
         await refreshLoginContext();
-        navigate("/");
+        // Check email and redirect accordingly
+        if (formData.email === "admin@gmail.com") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate(`/user/${response.data.userInfo.id}`);
+        }
       }
     } catch (err) {
       setError(

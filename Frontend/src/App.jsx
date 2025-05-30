@@ -5,6 +5,8 @@ import Homepage from "./pages/Homepage";
 import React from "react";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
+import ProfilePageAdmin from "./pages/ProfilePageAdmin";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 function App() {
   const router = createBrowserRouter([
@@ -29,6 +31,11 @@ function App() {
         {
           path: "/user/:id",
           element: <ProfilePage />,
+        },
+        {
+          path: "/admin/dashboard",
+          element: <AdminDashboard />,
+          element: <ProfilePageAdmin/>,
         },
       ],
     },
