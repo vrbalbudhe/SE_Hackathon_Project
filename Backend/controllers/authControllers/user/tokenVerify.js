@@ -10,14 +10,14 @@ const TokenVerification = asyncHandler(async (req, res) => {
         success: false,
       });
     }
-    jwt.verify(token, process.env.JWT_SECRET_KEY, async (err, payload) => {
+    jwt.verify(token, process.env.JWT_SECRET || "your-jwt-secret", async (err, payload) => {
       if (err) {
         return res.status(401).json({
           message: "User is Not Authenticated",
           success: false,
         });
       }
-      req.userId = payload.userId;
+      req.userId = payload.id || payload.userId; // Support both Google OAuth and regular auth
       return res.status(200).json({
         message: "User Info Fetced Sucessfully!! || User is Logged In",
         payload,
