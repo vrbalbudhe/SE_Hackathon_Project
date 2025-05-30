@@ -2,14 +2,26 @@ import React, { useState, useRef, useEffect } from "react";
 import { X, Save, FileText, Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight } from "lucide-react";
 
 const EditorModal = ({ isOpen, onClose, onSubmit }) => {
-  const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
+  const defaultTitle = "Client Name: HealthBridge";
+  const defaultContent = `
+    <p><strong>Industry:</strong> Healthcare</p>
+    <p><strong>Timeline:</strong> 6 months</p>
+    <p><strong>Modules:</strong> Appointment Booking, Medical Records Access, Secure Messaging, Admin Dashboard</p>
+    <p><strong>Technology Stack:</strong> React, Node.js, MongoDB, AWS</p>
+  `;
+
+  const [content, setContent] = useState(defaultContent);
+  const [title, setTitle] = useState(defaultTitle);
   const editorRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && editorRef.current) {
       // Focus the editor when modal opens
       editorRef.current.focus();
+      // Set the default content if the editor is empty
+      if (!editorRef.current.innerHTML) {
+        editorRef.current.innerHTML = defaultContent;
+      }
     }
   }, [isOpen]);
 
