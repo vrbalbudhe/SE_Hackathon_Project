@@ -58,7 +58,7 @@ const ReportsArchive = () => {
       clientIndustry: "Finance",
       createdDate: "2024-05-22",
       type: "Dashboard Design",
-      satatus: "Completed",
+      status: "Completed",
       description:
         "Interactive financial dashboard with real-time analytics and reporting capabilities",
       budget: "$50,000 - $75,000",
@@ -122,6 +122,8 @@ const ReportsArchive = () => {
   });
 
   const getStatusColor = (status) => {
+    if (!status) return "bg-gray-100 text-gray-800";
+    
     switch (status.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800";

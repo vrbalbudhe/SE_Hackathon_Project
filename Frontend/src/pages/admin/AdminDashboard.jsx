@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import UserManagement from '../../components/admin/users/UserManagement';
 import Analytics from '../../components/admin/analytics/Analytics';
+import ReportSection from '../../components/profile/report/ReportSection';
 
 // THIS IS THE IMPORTANT ONE - make sure this file exists at this exact path
 import ProposalArchives from '../../components/admin/proposals/ProposalArchives';
@@ -51,17 +52,8 @@ function AdminDashboard() {
         return <ProposalArchives />;
         
       case 'Report':
-        return (
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Reports</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <p className="text-gray-600">Reports section coming soon...</p>
-              <p className="text-sm text-gray-500 mt-2">
-                Note: This is different from the Archives section.
-              </p>
-            </div>
-          </div>
-        );
+        console.log('📝 Rendering ReportSection');
+        return <ReportSection />;
         
       case 'Settings':
         return (
@@ -134,14 +126,14 @@ function AdminDashboard() {
                     </button>
                     <button 
                       onClick={() => {
-                        console.log('🖱️ Clicked Archives - Should load ProposalArchives');
-                        setSelectedSection('Archives');
+                        console.log('🖱️ Clicked Report Section');
+                        setSelectedSection('Report');
                       }}
                       className="p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 text-left transition-colors"
                     >
-                      <h4 className="font-medium text-gray-900">📋 Proposal Archives</h4>
+                      <h4 className="font-medium text-gray-900">📝 Generate Report</h4>
                       <p className="text-sm text-gray-600 mt-1">
-                        View all submitted proposals (NOT ReportsArchive)
+                        Create new reports and proposals
                       </p>
                     </button>
                   </div>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Home, User, Settings, Archive, Users, BarChart3 } from "lucide-react";
+import { Home, FileText, Settings, Archive, Users, BarChart3 } from "lucide-react";
 
 function AdminSidebar({ selectedIcon, setSelectedIcon }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -10,7 +10,7 @@ function AdminSidebar({ selectedIcon, setSelectedIcon }) {
 
   const menuItems = [
     { icon: <Home size={20} />, label: "Home" },
-    { icon: <User size={20} />, label: "Report" },
+    { icon: <FileText size={20} />, label: "Report" },
     { icon: <Archive size={20} />, label: "Archives" },
     { icon: <Users size={20} />, label: "User Management" },
     { icon: <BarChart3 size={20} />, label: "Analytics" },
@@ -32,7 +32,7 @@ function AdminSidebar({ selectedIcon, setSelectedIcon }) {
           <li
             onClick={() => setSelectedIcon(item.label)}
             key={index}
-            className={`flex ${isCollapsed ? "justify-center" : ""} cursor-pointer items-center space-x-4 hover:bg-gray-100 p-2 rounded transition-colors`}
+            className={`flex ${isCollapsed ? "justify-center" : ""} cursor-pointer items-center space-x-4`}
           >
             <span
               className={`flex items-center ${selectedIcon === item.label ? "text-blue-700" : "text-gray-600"}`}
@@ -45,7 +45,7 @@ function AdminSidebar({ selectedIcon, setSelectedIcon }) {
               <span
                 className={
                   selectedIcon === item.label
-                    ? "text-blue-700 font-medium"
+                    ? "text-blue-700"
                     : "text-gray-600"
                 }
               >

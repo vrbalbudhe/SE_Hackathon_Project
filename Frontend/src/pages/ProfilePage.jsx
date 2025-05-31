@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import ProfileSidebar from "../components/profile/ProfileSidebar";
 import ReportSection from "../components/profile/report/ReportSection";
 import ProfileMainPage from "../components/profile/home/ProfileMainPage";
-import ReportsArchive from "../components/profile/archives/ReportsArchive";
+import UserProposalArchives from "../components/profile/archives/UserProposalArchives";
 
 function ProfilePage() {
   const { id } = useParams();
@@ -19,7 +19,7 @@ function ProfilePage() {
         </div>
         {selectedIcon === "Home" && <ProfileMainPage />}
         {selectedIcon === "Report" && <ReportSection />}
-        {selectedIcon === "Archives" && <ReportsArchive />}
+        {selectedIcon === "Archives" && <UserProposalArchives />}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const asyncHandler = require("express-async-handler");
 const prisma = require("../../lib/prisma");
+const { ObjectId } = require('mongodb');
 
 // Initialize Gemini AI with better error handling
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -46,17 +47,32 @@ const generateProposal = asyncHandler(async (req, res) => {
     let userId = null;
     let user = null;
 
-    console.log("🔍 Starting enhanced user detection...");
+    console.log("🔍 Starting user detection...");
 
-    // Method 1: From passport session (req.user) - HIGHEST PRIORITY
-    if (req.user && req.user.id) {
-      userId = req.user.id;
-      user = req.user;
-      console.log("✅ Method 1 - Using authenticated user:", user.email, "ID:", userId);
+    // Method 1: From request body email (HIGHEST PRIORITY)
+    if (userEmail) {
+      try {
+        user = await prisma.user.findUnique({
+          where: { email: userEmail }
+        });
+        if (user) {
+          userId = user.id;
+          console.log("✅ Method 1 - Found user by email:", userEmail, "ID:", userId);
+        }
+      } catch (emailError) {
+        console.error("❌ Error finding user by email:", emailError);
+      }
     }
 
-    // Method 2: From session passport user
-    if (!userId && req.session && req.session.passport && req.session.passport.user) {
+    // Method 2: From authenticated session (if Method 1 failed)
+    if (!userId && req.user && req.user.id) {
+      userId = req.user.id;
+      user = req.user;
+      console.log("✅ Method 2 - Using authenticated user:", user.email, "ID:", userId);
+    }
+
+    // Method 3: From session passport (if Methods 1 & 2 failed)
+    if (!userId && req.session?.passport?.user) {
       try {
         const sessionUserId = req.session.passport.user;
         user = await prisma.user.findUnique({
@@ -64,66 +80,25 @@ const generateProposal = asyncHandler(async (req, res) => {
         });
         if (user) {
           userId = user.id;
-          console.log("✅ Method 2 - Found user from session:", user.email, "ID:", userId);
+          console.log("✅ Method 3 - Found user from session:", user.email, "ID:", userId);
         }
       } catch (sessionError) {
         console.error("❌ Error finding user from session:", sessionError);
       }
     }
 
-    // Method 3: Direct userId from request body
-    if (!userId && req.body.userId) {
-      try {
-        user = await prisma.user.findUnique({
-          where: { id: req.body.userId }
-        });
-        if (user) {
-          userId = user.id;
-          console.log("✅ Method 3 - Found user from request body:", user.email, "ID:", userId);
-        }
-      } catch (bodyError) {
-        console.error("❌ Error finding user from body:", bodyError);
-      }
-    }
-
-    // Method 4: Find user by email if provided
-    if (!userId && userEmail) {
-      try {
-        user = await prisma.user.findUnique({
-          where: { email: userEmail }
-        });
-        if (user) {
-          userId = user.id;
-          console.log("✅ Method 4 - Found user by email:", userEmail, "ID:", userId);
-        }
-      } catch (emailError) {
-        console.error("❌ Error finding user by email:", emailError);
-      }
-    }
-
-    // Method 5: Get a random user (not the first one) for better testing
-    if (!userId) {
-      try {
-        const users = await prisma.user.findMany({
-          take: 5,
-          orderBy: { createdAt: 'desc' }
-        });
-        
-        if (users.length > 0) {
-          // Use the most recently created user instead of always the first one
-          user = users[0];
-          userId = user.id;
-          console.log("⚠️ Method 5 - Using recent user as fallback:", user.email, "ID:", userId);
-        }
-      } catch (fallbackError) {
-        console.error("❌ Error getting fallback user:", fallbackError);
-      }
+    // If no user found, return error
+    if (!userId || !user) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid user found for proposal creation. Please provide a valid user email or login.",
+      });
     }
 
     console.log("🎯 Final user selection:");
     console.log("- User ID:", userId);
-    console.log("- User email:", user?.email || "No user");
-    console.log("- User name:", user?.name || "No user");
+    console.log("- User email:", user.email);
+    console.log("- User name:", user.name);
 
     if (!process.env.GEMINI_API_KEY) {
       console.error("❌ GEMINI_API_KEY is not set");
@@ -237,17 +212,20 @@ Return only the JSON, no other text.`;
         customPrompt: customPrompt || null,
         latexContent: JSON.stringify(structuredProposal),
         budget: budget || structuredProposal.budgetEstimate?.total || null,
-        userId: userId // This will be null if no user found, which is okay
+        userId: userId // Store as string ID, Prisma will handle the conversion
       };
+
+      console.log("📝 Saving project with data:", JSON.stringify(projectData, null, 2));
 
       const savedProject = await prisma.projects.create({
         data: projectData
       });
 
-      console.log("🎉 SUCCESS! Project saved:");
+      console.log("🎉 SUCCESS! Project saved with full details:");
       console.log("- Project ID:", savedProject.id);
-      console.log("- Assigned to:", user?.email || "No user");
-      console.log("- User ID:", userId || "No user ID");
+      console.log("- Project Name:", savedProject.name);
+      console.log("- Assigned to User ID:", savedProject.userId);
+      console.log("- Assigned to Email:", user.email);
 
       // Return success response
       res.status(200).json({
@@ -261,8 +239,8 @@ Return only the JSON, no other text.`;
           model: "gemini-1.5-flash",
           databaseId: savedProject.id,
           assignedUserId: userId,
-          assignedUserEmail: user?.email || "No user",
-          assignedUserName: user?.name || "No user"
+          assignedUserEmail: user.email,
+          assignedUserName: user.name
         }
       });
 

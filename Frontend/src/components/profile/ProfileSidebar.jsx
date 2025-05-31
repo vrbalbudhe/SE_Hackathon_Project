@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Home, User, Settings, Archive } from "lucide-react";
+import { Home, FileText, Settings, Archive, User } from "lucide-react";
 
 function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -10,8 +10,9 @@ function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
 
   const menuItems = [
     { icon: <Home size={20} />, label: "Home" },
-    { icon: <User size={20} />, label: "Report" },
+    { icon: <FileText size={20} />, label: "Report" },
     { icon: <Archive size={20} />, label: "Archives" },
+    { icon: <User size={20} />, label: "Profile" },
     { icon: <Settings size={20} />, label: "Settings" },
   ];
 
