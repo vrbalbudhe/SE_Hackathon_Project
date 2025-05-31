@@ -1,4 +1,6 @@
+
 import React, { useState, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Send,
@@ -13,13 +15,103 @@ import {
   MessageSquare,
   FileText,
   Factory,
+  Zap,
+  Loader2,
 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import ProposalDisplay from "./ProposalDisplay";
 import { AuthContext } from "../../../contexts/AuthContext";
 
-const ReportForm = ({ onClose }) => {
+// Autofill Popup Component
+const AutofillPopup = ({ isOpen, onClose, onSubmit, isLoading }) => {
+  const [description, setDescription] = useState("");
+
+  const handleSubmit = () => {
+    if (description.trim()) {
+      onSubmit(description.trim());
+      setDescription("");
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && e.ctrlKey && !isLoading && description.trim()) {
+      handleSubmit();
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Autofill Project Details</h3>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              disabled={isLoading}
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          
+          <div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Project Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Describe your project requirements, tech stack, timeline, client details, and any other relevant information..."
+                rows={6}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={isLoading}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Tip: Press Ctrl+Enter to submit
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !description.trim()}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    Generate & Fill
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
   const { id: userId } = useParams();
   const { currentUser } = useContext(AuthContext);
   
@@ -43,9 +135,47 @@ const ReportForm = ({ onClose }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProposal, setGeneratedProposal] = useState(null);
   const [isProposalOpen, setIsProposalOpen] = useState(false);
+
+  
+  // Autofill state
+  const [showAutofillPopup, setShowAutofillPopup] = useState(false);
+  const [isAutofillLoading, setIsAutofillLoading] = useState(false);
+
+  // Handle autofill data from parent component
+  useEffect(() => {
+    if (autofillData) {
+      setFormData(prev => ({
+        ...prev,
+        name: autofillData.title || autofillData.name || prev.name,
+        clientName: autofillData.clientName || prev.clientName,
+        clientIndustry: autofillData.clientIndustry || prev.clientIndustry,
+        timelineStart: autofillData.timelineStart || prev.timelineStart,
+        timelineEnd: autofillData.timelineEnd || prev.timelineEnd,
+        budget: autofillData.budget || prev.budget,
+        techStack: Array.isArray(autofillData.techStack) 
+          ? autofillData.techStack.join(', ') 
+          : autofillData.techStack || prev.techStack,
+        modules: Array.isArray(autofillData.modules) 
+          ? autofillData.modules.join(', ') 
+          : autofillData.modules || prev.modules,
+        tone: autofillData.tone || prev.tone,
+        proposalType: autofillData.proposalType || prev.proposalType,
+        customPrompt: autofillData.customPrompt || prev.customPrompt,
+        latexContent: autofillData.latexContent || prev.latexContent,
+        goals: autofillData.goals || prev.goals,
+        challenges: autofillData.challenges || prev.challenges,
+      }));
+      
+      // Clear the autofill data after using it
+      if (onAutofillDataUsed) {
+        onAutofillDataUsed();
+      }
+    }
+  }, [autofillData, onAutofillDataUsed]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -72,6 +202,70 @@ const ReportForm = ({ onClose }) => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAutofillSubmit = async (description) => {
+    setIsAutofillLoading(true);
+    
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/api/proposal/autofill",
+        { description },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+
+      if (response.data) {
+        // Map the API response to form fields
+        setFormData(prev => ({
+          ...prev,
+          name: response.data.title || response.data.name || prev.name,
+          clientName: response.data.clientName || prev.clientName,
+          clientIndustry: response.data.clientIndustry || prev.clientIndustry,
+          timelineStart: response.data.timelineStart || prev.timelineStart,
+          timelineEnd: response.data.timelineEnd || prev.timelineEnd,
+          budget: response.data.budget || prev.budget,
+          techStack: Array.isArray(response.data.techStack) 
+            ? response.data.techStack.join(', ') 
+            : response.data.techStack || prev.techStack,
+          modules: Array.isArray(response.data.modules) 
+            ? response.data.modules.join(', ') 
+            : response.data.modules || prev.modules,
+          tone: response.data.tone || prev.tone,
+          proposalType: response.data.proposalType || prev.proposalType,
+          customPrompt: response.data.customPrompt || prev.customPrompt,
+          latexContent: response.data.latexContent || prev.latexContent,
+          goals: response.data.goals || prev.goals,
+          challenges: response.data.challenges || prev.challenges,
+        }));
+
+        setShowAutofillPopup(false);
+        alert('Form autofilled successfully!');
+      } else {
+        alert("Failed to generate autofill data. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error generating autofill data:", error);
+      
+      let errorMessage = "Error generating autofill data. ";
+      if (error.response?.status === 404) {
+        errorMessage += "API endpoint not found. Please check if backend is running.";
+      } else if (error.response?.status === 500) {
+        errorMessage += error.response?.data?.error || "Server error occurred.";
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage += "Network error. Please check if the backend server is running on port 8000.";
+      } else {
+        errorMessage += error.response?.data?.error || error.message || "Please check your connection and try again.";
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsAutofillLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -214,6 +408,27 @@ User: ${currentUser.email}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-5 h-5 text-gray-500" />
+  return (
+    <>
+      <div className="p-6 overflow-y-auto max-h-[90vh]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Submit Report</h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Autofill Button */}
+        <div className="flex justify-end mb-4">
+          <button 
+            className="p-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors flex items-center gap-2 px-4"
+            onClick={() => setShowAutofillPopup(true)}
+          >
+            <Zap className="w-4 h-4" />
+            Smart Autofill
           </button>
         </div>
 
@@ -465,6 +680,101 @@ User: ${currentUser.email}
         isOpen={isProposalOpen}
         onClose={handleCloseProposal}
         proposal={generatedProposal}
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Goals*
+              </label>
+              <textarea
+                name="goals"
+                value={formData.goals}
+                onChange={handleChange}
+                rows={3}
+                className={`w-full p-3 border rounded-lg resize-none ${
+                  errors.goals ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.goals && <p className="mt-1 text-sm text-red-600">{errors.goals}</p>}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Challenges
+              </label>
+              <textarea
+                name="challenges"
+                value={formData.challenges}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                placeholder="Optional"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Tone*
+              </label>
+              <textarea
+                name="tone"
+                value={formData.tone}
+                onChange={handleChange}
+                rows={3}
+                className={`w-full p-3 border rounded-lg resize-none ${
+                  errors.tone ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.tone && <p className="mt-1 text-sm text-red-600">{errors.tone}</p>}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Proposal Type
+              </label>
+              <textarea
+                name="proposalType"
+                value={formData.proposalType}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 ${
+                isSubmitting 
+                  ? 'bg-blue-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Autofill Popup */}
+      <AutofillPopup
+        isOpen={showAutofillPopup}
+        onClose={() => setShowAutofillPopup(false)}
+        onSubmit={handleAutofillSubmit}
+        isLoading={isAutofillLoading}
       />
     </>
   );
