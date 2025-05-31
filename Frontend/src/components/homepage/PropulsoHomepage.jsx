@@ -12,6 +12,7 @@ import {
   Shield,
   Rocket,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const PropulsoHomepage = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -88,10 +89,12 @@ const PropulsoHomepage = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+            <Link to="/auth">
               <button className="group bg-gradient-to-r from-purple-500 to-blue-500 px-8 py-4 rounded-full font-semibold text-lg hover:from-purple-600 hover:to-blue-600 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/25 flex items-center">
                 Start Creating Now
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+            </button>
+            </Link>
               <button className="group bg-white/10 backdrop-blur-md border border-white/20 px-8 py-4 rounded-full font-semibold text-lg hover:bg-white/20 transition-all duration-300 hover:scale-105 flex items-center">
                 Watch Demo
                 <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />

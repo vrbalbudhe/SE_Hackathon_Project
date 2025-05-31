@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import axios from "axios";
 
-const RegisterForm = () => {
+const RegisterForm = ({ setIsRegister }) => {
   const [formData, setFormData] = useState({
     email: "",
     phone: "",
@@ -13,15 +14,35 @@ const RegisterForm = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/api/auth/register",
+        formData
+      );
+      if (response.data.success) {
+        setIsRegister(false);
+      }
+    } catch (error) {
+      console.error("Registration failed:", error);
+    }
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-opacity-50 backdrop-blur-md z-50">
       <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg relative">
-        <h2 className="text-2xl text-center font-bold mb-4">Register</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900">Register</h2>
+          <button
+            onClick={() => setIsRegister(false)}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

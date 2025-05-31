@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { Home, User, Settings, Archive, Users, BarChart3 } from "lucide-react";
+import { Home, FileText, Settings, Archive, Users, BarChart3 } from "lucide-react";
 
-function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
+function AdminSidebar({ selectedIcon, setSelectedIcon }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleSidebar = () => {
@@ -10,7 +10,7 @@ function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
 
   const menuItems = [
     { icon: <Home size={20} />, label: "Home" },
-    { icon: <User size={20} />, label: "Report" },
+    { icon: <FileText size={20} />, label: "Report" },
     { icon: <Archive size={20} />, label: "Archives" },
     { icon: <Users size={20} />, label: "User Management" },
     { icon: <BarChart3 size={20} />, label: "Analytics" },
@@ -59,4 +59,4 @@ function ProfileSidebar({ selectedIcon, setSelectedIcon }) {
   );
 }
 
-export default ProfileSidebar;
+export default AdminSidebar;

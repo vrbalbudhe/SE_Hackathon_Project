@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom"; // Add missing imports
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { ProtectedLayout } from "./layouts/ProtectedLayout";
 import Homepage from "./pages/Homepage";
@@ -33,9 +33,12 @@ function App() {
           element: <ProfilePage />,
         },
         {
-          path: "/admin/dashboard",
-          // element: <AdminDashboard />,
+          path: "/admin/:id",
           element: <ProfilePageAdmin />,
+        },
+        {
+          path: "/admin/dashboard",
+          element: <AdminDashboard />,
         },
       ],
     },
