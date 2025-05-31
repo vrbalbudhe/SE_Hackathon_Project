@@ -34,8 +34,8 @@ function App() {
         },
         {
           path: "/admin/dashboard",
-          element: <AdminDashboard />,
-          element: <ProfilePageAdmin/>,
+          // element: <AdminDashboard />,
+          element: <ProfilePageAdmin />,
         },
       ],
     },
