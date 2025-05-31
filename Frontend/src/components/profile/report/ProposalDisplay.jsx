@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { 
   X, 
   Download, 
@@ -11,17 +11,155 @@ import {
   CheckCircle,
   Clock,
   ArrowRight,
-  FilePlus
+  FilePlus,
+  Edit2,
+  Save,
+  AlertTriangle
 } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
 import { saveAs } from "file-saver";
+import axios from "axios";
 
-const ProposalDisplay = ({ isOpen, onClose, proposal }) => {
+const ProposalDisplay = ({ isOpen, onClose, proposal, proposalId, onProposalUpdate }) => {
   const contentRef = useRef(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(proposal);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [currentProjectId, setCurrentProjectId] = useState(proposalId);
   
-  if (!isOpen || !proposal) return null;
+  // Update current project ID when prop changes
+  useEffect(() => {
+    if (proposalId !== currentProjectId) {
+      console.log("Project ID updated:", {
+        previous: currentProjectId,
+        new: proposalId
+      });
+      setCurrentProjectId(proposalId);
+    }
+  }, [proposalId, currentProjectId]);
+  
+  // Debug log when props change
+  useEffect(() => {
+    console.log("ProposalDisplay props updated:", {
+      isOpen,
+      hasProposal: !!proposal,
+      proposalId,
+      currentProjectId,
+      isEditing
+    });
+  }, [isOpen, proposal, proposalId, currentProjectId, isEditing]);
+  
+  // Update editedContent when proposal changes
+  useEffect(() => {
+    if (proposal) {
+      console.log("Updating edited content with new proposal");
+      setEditedContent(proposal);
+      setError(null); // Clear any previous errors
+    }
+  }, [proposal]);
+  
+  // Validate project ID when entering edit mode
+  useEffect(() => {
+    if (isEditing) {
+      // if (!currentProjectId) {
+      //   console.error("Entered edit mode without project ID");
+      //   setError('Cannot edit: Project ID is not available. Please try creating the project again.');
+      //   setIsEditing(false);
+      // } else {
+        console.log("Edit mode activated with project ID:", currentProjectId);
+    }
+  }, [isEditing, currentProjectId]);
+  
+  if (!isOpen || !proposal) {
+    console.log("Component not rendering:", { isOpen, hasProposal: !!proposal });
+    return null;
+  }
+
+  const handleEdit = () => {
+    console.log("Attempting to edit proposal:", {
+      projectId: currentProjectId,
+      hasProposal: !!proposal,
+      currentContent: editedContent
+    });
+    
+    // if (!currentProjectId) {
+    //   const errorMsg = 'Cannot edit: Project ID is not available. Please try creating the project again.';
+    //   console.error(errorMsg);
+    //   setError(errorMsg);
+    //   return;
+    // }
+    
+    setEditedContent(proposal);
+    setIsEditing(true);
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    try {
+      console.log("Attempting to save proposal:", {
+        projectId: currentProjectId,
+        hasContent: !!editedContent
+      });
+      
+      // if (!currentProjectId) {
+      //   const errorMsg = 'Cannot save changes: Project ID is not available. Please try creating the project again.';
+      //   console.error(errorMsg);
+      //   setError(errorMsg);
+      //   return;
+      // }
+
+      if (!editedContent) {
+        const errorMsg = 'No content to save. Please make some changes first.';
+        console.error(errorMsg);
+        setError(errorMsg);
+        return;
+      }
+
+      setIsSaving(true);
+      setError(null);
+
+      const response = await axios.put(
+        `http://localhost:8000/api/project/update/${currentProjectId}`,
+        {
+          content: editedContent
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true
+        }
+      );
+
+      if (response.data.success) {
+        console.log("Successfully saved changes for project:", currentProjectId);
+        setIsEditing(false);
+        if (onProposalUpdate) {
+          onProposalUpdate(editedContent);
+        }
+      } else {
+        throw new Error(response.data.message || 'Failed to save changes');
+      }
+    } catch (err) {
+      const errorMsg = err.message || 'Failed to save changes. Please try again.';
+      console.error('Error saving changes:', {
+        error: err,
+        projectId: currentProjectId,
+        hasContent: !!editedContent
+      });
+      setError(errorMsg);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleContentChange = (section, value) => {
+    setEditedContent(prev => ({
+      ...prev,
+      [section]: value
+    }));
+  };
 
   // Parse the proposal content to get sections
   const parseProposalSections = () => {
@@ -744,6 +882,33 @@ const ProposalDisplay = ({ isOpen, onClose, proposal }) => {
     });
   };
 
+  const renderEditableSection = (title, icon, content, section) => {
+    if (!content) return null;
+
+    return (
+      <div className="mb-8 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center gap-3 mb-4">
+          {icon}
+          <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+        </div>
+        {isEditing ? (
+          <textarea
+            value={typeof editedContent[section] === 'string' ? 
+              editedContent[section] : 
+              JSON.stringify(editedContent[section], null, 2)
+            }
+            onChange={(e) => handleContentChange(section, e.target.value)}
+            className="w-full h-48 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        ) : (
+          <div className="text-gray-600 leading-relaxed">
+            {formatContent(content)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
@@ -760,24 +925,46 @@ const ProposalDisplay = ({ isOpen, onClose, proposal }) => {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {!isEditing ? (
+              <>
+                <button
+                  onClick={handleEdit}
+                  className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 px-4"
+                  title="Edit Proposal"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </button>
+                <button
+                  onClick={downloadPDF}
+                  className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 px-4"
+                  title="Download as PDF"
+                >
+                  <FileText className="w-4 h-4" />
+                  PDF
+                </button>
+                <button
+                  onClick={downloadDOCX}
+                  className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 px-4"
+                  title="Download as DOCX"
+                >
+                  <FilePlus className="w-4 h-4" />
+                  DOCX
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`p-2 ${isSaving ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg transition-colors flex items-center gap-2 px-4`}
+                title="Save Changes"
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+            )}
             <button
-              onClick={downloadPDF}
-              className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 px-4"
-              title="Download as PDF"
-            >
-              <FileText className="w-4 h-4" />
-              PDF
-            </button>
-            <button
-              onClick={downloadDOCX}
-              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 px-4"
-              title="Download as DOCX"
-            >
-              <FilePlus className="w-4 h-4" />
-              DOCX
-            </button>
-            <button
-              onClick={onClose}
+              onClick={isEditing ? () => setIsEditing(false) : onClose}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <X className="w-6 h-6 text-gray-500" />
@@ -785,100 +972,130 @@ const ProposalDisplay = ({ isOpen, onClose, proposal }) => {
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-4 bg-red-50 border-b border-red-200">
+            <div className="flex items-center gap-2 text-red-700">
+              <AlertTriangle className="w-5 h-5" />
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6" ref={contentRef}>
           <div className="bg-white rounded-lg p-8">
             {/* Title */}
             {parsedProposal.title && (
               <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-                {parsedProposal.title}
+                {isEditing ? (
+                  <input
+                    type="text"
+                    value={editedContent.title}
+                    onChange={(e) => handleContentChange('title', e.target.value)}
+                    className="w-full text-center border-b border-gray-300 focus:border-blue-500 focus:ring-0"
+                  />
+                ) : (
+                  parsedProposal.title
+                )}
               </h1>
             )}
 
-            {/* Executive Summary */}
-            {parsedProposal.executiveSummary && renderSection(
+            {/* Sections */}
+            {renderEditableSection(
               "Executive Summary",
               <Briefcase className="w-6 h-6 text-blue-600" />,
-              parsedProposal.executiveSummary
+              parsedProposal.executiveSummary,
+              'executiveSummary'
             )}
 
-            {/* Client Information */}
-            {parsedProposal.clientInformation && renderSection(
+            {renderEditableSection(
               "Client Information",
               <Users className="w-6 h-6 text-blue-600" />,
-              parsedProposal.clientInformation
+              parsedProposal.clientInformation,
+              'clientInformation'
             )}
 
-            {/* Project Overview */}
-            {parsedProposal.projectOverview && renderSection(
+            {renderEditableSection(
               "Project Overview",
               <FileText className="w-6 h-6 text-blue-600" />,
-              parsedProposal.projectOverview
+              parsedProposal.projectOverview,
+              'projectOverview'
             )}
 
-            {/* Proposed Solution */}
-            {parsedProposal.proposedSolution && renderSection(
+            {renderEditableSection(
               "Proposed Solution",
               <Target className="w-6 h-6 text-blue-600" />,
-              parsedProposal.proposedSolution
+              parsedProposal.proposedSolution,
+              'proposedSolution'
             )}
 
-            {/* Project Timeline */}
-            {parsedProposal.projectTimeline && renderSection(
+            {renderEditableSection(
               "Project Timeline",
               <Calendar className="w-6 h-6 text-blue-600" />,
-              parsedProposal.projectTimeline
+              parsedProposal.projectTimeline,
+              'projectTimeline'
             )}
 
-            {/* Team & Resources */}
-            {parsedProposal.teamResources && renderSection(
+            {renderEditableSection(
               "Team & Resources",
               <Users className="w-6 h-6 text-blue-600" />,
-              parsedProposal.teamResources
+              parsedProposal.teamResources,
+              'teamResources'
             )}
 
-            {/* Budget Estimate */}
-            {parsedProposal.budgetEstimate && renderSection(
+            {renderEditableSection(
               "Budget Estimate",
               <DollarSign className="w-6 h-6 text-blue-600" />,
-              parsedProposal.budgetEstimate
+              parsedProposal.budgetEstimate,
+              'budgetEstimate'
             )}
 
-            {/* Success Metrics */}
-            {parsedProposal.successMetrics && renderSection(
+            {renderEditableSection(
               "Success Metrics",
               <CheckCircle className="w-6 h-6 text-blue-600" />,
-              parsedProposal.successMetrics
+              parsedProposal.successMetrics,
+              'successMetrics'
             )}
 
-            {/* Terms & Conditions */}
-            {parsedProposal.termsConditions && renderSection(
+            {renderEditableSection(
               "Terms & Conditions",
               <FileText className="w-6 h-6 text-blue-600" />,
-              parsedProposal.termsConditions
+              parsedProposal.termsConditions,
+              'termsConditions'
             )}
 
             {/* Full content fallback */}
             {parsedProposal.content && !parsedProposal.executiveSummary && (
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-100">
                 <h3 className="text-xl font-semibold text-gray-800 mb-4">Proposal Content</h3>
-                <div className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                  {parsedProposal.content}
-                </div>
+                {isEditing ? (
+                  <textarea
+                    value={editedContent.content}
+                    onChange={(e) => handleContentChange('content', e.target.value)}
+                    className="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                ) : (
+                  <div className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+                    {parsedProposal.content}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Next Steps */}
-            <div className="mt-8 bg-blue-50 p-6 rounded-lg border border-blue-200 relative">
-              <div className="flex items-center gap-3 mb-3">
-                <ArrowRight className="w-6 h-6 text-blue-600" />
-                <h3 className="text-xl font-semibold text-blue-900">Next Steps</h3>
+            {!isEditing && (
+              <div className="mt-8 bg-blue-50 p-6 rounded-lg border border-blue-200 relative">
+                <div className="flex items-center gap-3 mb-3">
+                  <ArrowRight className="w-6 h-6 text-blue-600" />
+                  <h3 className="text-xl font-semibold text-blue-900">Next Steps</h3>
+                </div>
+                <p className="text-blue-800">
+                  Review this proposal and download it in your preferred format. The PDF version maintains
+                  the visual formatting, while the DOCX version allows for further editing.
+                </p>
               </div>
-              <p className="text-blue-800">
-                Review this proposal and download it in your preferred format. The PDF version maintains
-                the visual formatting, while the DOCX version allows for further editing.
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>
