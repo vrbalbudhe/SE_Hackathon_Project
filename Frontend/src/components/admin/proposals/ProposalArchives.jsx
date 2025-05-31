@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Archive, Eye, Calendar, User, Building2, FileText, AlertCircle, X } from 'lucide-react';
+import {
+  Archive,
+  Eye,
+  Calendar,
+  User,
+  Building2,
+  X,
+  AlertCircle,
+  FileText
+} from 'lucide-react';
 
 const ProposalArchives = () => {
   const [proposals, setProposals] = useState([]);
@@ -36,11 +45,10 @@ const ProposalArchives = () => {
       console.log('📊 API result:', result);
 
       if (result.success) {
-        // Ensure each proposal has a unique ID and clean the data
+        // Clean and transform the data
         const cleanedProposals = (result.data.proposals || []).map((proposal, index) => ({
-          // Ensure unique ID
           id: proposal.id || `proposal-${index}-${Date.now()}`,
-          name: proposal.name || `Proposal ${index + 1}`,
+          name: proposal.name || 'Untitled',
           clientName: proposal.clientName || 'Unknown Client',
           clientIndustry: proposal.clientIndustry || 'Unknown Industry',
           budget: proposal.budget || null,
@@ -50,17 +58,13 @@ const ProposalArchives = () => {
           challenges: proposal.challenges || null,
           tone: proposal.tone || null,
           proposalType: proposal.proposalType || null,
-          // Fix date parsing
           createdAt: proposal.createdAt ? new Date(proposal.createdAt) : new Date(),
           updatedAt: proposal.updatedAt ? new Date(proposal.updatedAt) : new Date(),
-          // Clean user data
           user: proposal.user && typeof proposal.user === 'object' ? {
             id: proposal.user.id || 'unknown',
             name: proposal.user.name || 'Unknown User',
-            email: proposal.user.email || 'No email',
-            avatar: proposal.user.avatar || null
-          } : null,
-          hasLatexContent: proposal.hasLatexContent || false
+            email: proposal.user.email || 'No email'
+          } : null
         }));
 
         setProposals(cleanedProposals);
@@ -99,34 +103,8 @@ const ProposalArchives = () => {
     return techStack.slice(0, 3);
   };
 
-  const viewProposal = async (proposalId) => {
-    try {
-      console.log('👁️ Viewing proposal:', proposalId);
-      
-      const response = await fetch(`http://localhost:8000/api/admin/proposals/${proposalId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch proposal details');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        setSelectedProposal(result.data);
-        console.log('✅ Proposal details loaded');
-      } else {
-        throw new Error(result.message || 'Failed to load proposal details');
-      }
-    } catch (err) {
-      console.error('❌ Error viewing proposal:', err);
-      alert(`Failed to load proposal details: ${err.message}`);
-    }
+  const viewProposal = (proposal) => {
+    setSelectedProposal(proposal);
   };
 
   const closeModal = () => {
@@ -138,9 +116,9 @@ const ProposalArchives = () => {
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            📋 Proposal Archives (Admin)
+            📋 All Proposals (Admin)
           </h1>
-          <p className="text-gray-600">Loading all proposals from database...</p>
+          <p className="text-gray-600">Loading all proposals...</p>
         </div>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -155,7 +133,7 @@ const ProposalArchives = () => {
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            📋 Proposal Archives (Admin)
+            📋 All Proposals (Admin)
           </h1>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
@@ -181,7 +159,7 @@ const ProposalArchives = () => {
       <div className="mb-6">
         <div className="flex items-center mb-2">
           <Archive className="h-8 w-8 text-blue-600 mr-3" />
-          <h1 className="text-3xl font-bold text-gray-900">Proposal Archives</h1>
+          <h1 className="text-3xl font-bold text-gray-900">All Proposals</h1>
         </div>
         <p className="text-gray-600">
           Admin view of all proposals - Found {proposals.length} proposals
@@ -193,7 +171,7 @@ const ProposalArchives = () => {
         <div className="flex items-center">
           <FileText className="h-5 w-5 text-green-600 mr-2" />
           <p className="text-sm text-green-700">
-            ✅ Successfully connected to admin proposals API
+            ✅ Successfully loaded all proposals
           </p>
         </div>
       </div>
@@ -222,7 +200,7 @@ const ProposalArchives = () => {
                       {proposal.name}
                     </h4>
                     
-                    {/* Client Info */}
+                    {/* Client & User Info */}
                     <div className="flex items-center flex-wrap gap-4 text-sm text-gray-600 mb-3">
                       <div className="flex items-center">
                         <Building2 className="h-4 w-4 mr-1 flex-shrink-0" />
@@ -283,7 +261,7 @@ const ProposalArchives = () => {
                   {/* Actions */}
                   <div className="ml-4 flex-shrink-0">
                     <button 
-                      onClick={() => viewProposal(proposal.id)}
+                      onClick={() => viewProposal(proposal)}
                       className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                     >
                       <Eye className="h-4 w-4 mr-1" />
@@ -313,59 +291,83 @@ const ProposalArchives = () => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Proposal Name</label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {selectedProposal.name || 'No name'}
-                  </p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {selectedProposal.clientName || 'No client name'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {selectedProposal.clientIndustry || 'No industry specified'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {selectedProposal.budget || 'Not specified'}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                    {formatDate(selectedProposal.createdAt)}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Goals & Requirements</label>
-                  <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
-                    {selectedProposal.goals || 'No goals specified'}
-                  </div>
-                </div>
-
-                {selectedProposal.challenges && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Challenges</label>
-                    <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
-                      {selectedProposal.challenges}
-                    </div>
-                  </div>
-                )}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Proposal Name</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.name}
+                </p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.user ? 
+                    `${selectedProposal.user.name} (${selectedProposal.user.email})` : 
+                    'No user assigned'
+                  }
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.clientName}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.clientIndustry}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.budget || 'Not specified'}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {formatDate(selectedProposal.createdAt)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Goals & Requirements</label>
+                <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
+                  {selectedProposal.goals}
+                </div>
+              </div>
+
+              {selectedProposal.challenges && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Challenges</label>
+                  <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
+                    {selectedProposal.challenges}
+                  </div>
+                </div>
+              )}
+
+              {selectedProposal.techStack && selectedProposal.techStack.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tech Stack</label>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedProposal.techStack.map((tech, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
