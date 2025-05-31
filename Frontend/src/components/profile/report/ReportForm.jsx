@@ -42,7 +42,7 @@ const AutofillPopup = ({ isOpen, onClose, onSubmit, isLoading }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -138,6 +138,7 @@ const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedProposal, setGeneratedProposal] = useState(null);
   const [isProposalOpen, setIsProposalOpen] = useState(false);
+  const [projectId, setProjectId] = useState(null);
 
   
   // Autofill state
@@ -332,9 +333,8 @@ User: ${currentUser.email}
       // Store the generated proposal
       const generatedContent = proposalResponse.data.proposal;
       setGeneratedProposal(generatedContent);
-      setIsProposalOpen(true);
 
-      // Now create the project in the database
+      // Create the project in the database first
       const payload = {
         ...formData,
         timelineStart: new Date(formData.timelineStart),
@@ -351,6 +351,8 @@ User: ${currentUser.email}
         userEmail: currentUser.email
       };
 
+      console.log("Creating project with payload:", payload);
+
       const projectResponse = await axios.post(
         "http://localhost:8000/api/project/add",
         payload,
@@ -360,9 +362,28 @@ User: ${currentUser.email}
         }
       );
 
-      if (!projectResponse.data.success) {
-        throw new Error(projectResponse.data.message || "Failed to save project");
+      console.log("Project creation response:", projectResponse.data);
+
+      if (!projectResponse.data.success || !projectResponse.data.data?.id) {
+        console.error("Project creation failed:", projectResponse.data);
+        throw new Error(projectResponse.data.message || "Failed to save project: No project ID returned");
       }
+
+      // Store the project ID
+      const newProjectId = projectResponse.data.data.id;
+      console.log("Project created successfully with ID:", newProjectId);
+      
+      // Important: Set the project ID before opening the modal
+      await setProjectId(newProjectId);
+      
+      // Double check that project ID is set
+      console.log("Verifying project ID is set:", {
+        stateProjectId: newProjectId,
+        hasGeneratedProposal: !!generatedContent
+      });
+
+      // Show the proposal modal
+      setIsProposalOpen(true);
 
     } catch (err) {
       console.error("Project submission error:", err);
@@ -370,6 +391,8 @@ User: ${currentUser.email}
         submit: err.response?.data?.message || "Error submitting the project. Please check all required fields."
       });
       setIsProposalOpen(false);
+      setProjectId(null); // Reset project ID on error
+      setGeneratedProposal(null); // Reset proposal on error
     } finally {
       setIsSubmitting(false);
       setIsGenerating(false);
@@ -392,23 +415,34 @@ User: ${currentUser.email}
   };
 
   const handleCloseProposal = () => {
+    console.log("Closing proposal modal, current state:", {
+      projectId,
+      hasProposal: !!generatedProposal,
+      isOpen: isProposalOpen
+    });
     setIsProposalOpen(false);
     setGeneratedProposal(null);
+    setProjectId(null); // Reset project ID when closing
     onClose();
   };
 
+  // Debug effect to monitor project ID changes
+  useEffect(() => {
+    console.log("Project ID changed:", projectId);
+  }, [projectId]);
+
   return (
     <>
-      <div className="p-6 overflow-y-auto max-h-[90vh]">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900">Submit Report</h3>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
+    <div className="p-6 overflow-y-auto max-h-[90vh]">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold text-gray-900">Submit Report</h3>
+        <button
+          onClick={onClose}
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+        >
+          <X className="w-5 h-5 text-gray-500" />
+        </button>
+      </div>
 
         {/* Autofill Button */}
         <div className="flex justify-end mb-4">
@@ -427,177 +461,177 @@ User: ${currentUser.email}
           </div>
         )}
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <User className="w-4 h-4" />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <User className="w-4 h-4" />
                 Project Name*
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
                 className={`w-full p-3 border rounded-lg ${
                   errors.name ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-            </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Building2 className="w-4 h-4" />
                 Client Name*
-              </label>
-              <input
-                type="text"
-                name="clientName"
-                value={formData.clientName}
-                onChange={handleChange}
+            </label>
+            <input
+              type="text"
+              name="clientName"
+              value={formData.clientName}
+              onChange={handleChange}
                 className={`w-full p-3 border rounded-lg ${
                   errors.clientName ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.clientName && <p className="mt-1 text-sm text-red-600">{errors.clientName}</p>}
-            </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Factory className="w-4 h-4" />
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Factory className="w-4 h-4" />
                 Client Industry*
-              </label>
-              <input
-                type="text"
-                name="clientIndustry"
-                value={formData.clientIndustry}
-                onChange={handleChange}
+            </label>
+            <input
+              type="text"
+              name="clientIndustry"
+              value={formData.clientIndustry}
+              onChange={handleChange}
                 className={`w-full p-3 border rounded-lg ${
                   errors.clientIndustry ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.clientIndustry && <p className="mt-1 text-sm text-red-600">{errors.clientIndustry}</p>}
-            </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
                 Timeline Start*
-              </label>
-              <input
-                type="date"
-                name="timelineStart"
-                value={formData.timelineStart}
-                onChange={handleChange}
+            </label>
+            <input
+              type="date"
+              name="timelineStart"
+              value={formData.timelineStart}
+              onChange={handleChange}
                 className={`w-full p-3 border rounded-lg ${
                   errors.timelineStart ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.timelineStart && <p className="mt-1 text-sm text-red-600">{errors.timelineStart}</p>}
-            </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
                 Timeline End*
-              </label>
-              <input
-                type="date"
-                name="timelineEnd"
-                value={formData.timelineEnd}
-                onChange={handleChange}
+            </label>
+            <input
+              type="date"
+              name="timelineEnd"
+              value={formData.timelineEnd}
+              onChange={handleChange}
                 className={`w-full p-3 border rounded-lg ${
                   errors.timelineEnd ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.timelineEnd && <p className="mt-1 text-sm text-red-600">{errors.timelineEnd}</p>}
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <DollarSign className="w-4 h-4" />
-                Budget
-              </label>
-              <input
-                type="text"
-                name="budget"
-                value={formData.budget}
-                onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg"
-                placeholder="Optional"
-              />
-            </div>
           </div>
 
-          <div className="space-y-4">
-            <div>
+          <div>
               <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Code className="w-4 h-4" />
+              <DollarSign className="w-4 h-4" />
+              Budget
+            </label>
+            <input
+              type="text"
+              name="budget"
+              value={formData.budget}
+              onChange={handleChange}
+              className="w-full p-3 border border-gray-300 rounded-lg"
+                placeholder="Optional"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Code className="w-4 h-4" />
                 Tech Stack* (comma-separated)
-              </label>
-              <textarea
-                name="techStack"
-                value={formData.techStack}
-                onChange={handleChange}
-                rows={3}
+            </label>
+            <textarea
+              name="techStack"
+              value={formData.techStack}
+              onChange={handleChange}
+              rows={3}
                 className={`w-full p-3 border rounded-lg resize-none ${
                   errors.techStack ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.techStack && <p className="mt-1 text-sm text-red-600">{errors.techStack}</p>}
-            </div>
+          </div>
 
-            <div>
+          <div>
               <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Package className="w-4 h-4" />
+              <Package className="w-4 h-4" />
                 Modules* (comma-separated)
-              </label>
-              <textarea
-                name="modules"
-                value={formData.modules}
-                onChange={handleChange}
-                rows={3}
+            </label>
+            <textarea
+              name="modules"
+              value={formData.modules}
+              onChange={handleChange}
+              rows={3}
                 className={`w-full p-3 border rounded-lg resize-none ${
                   errors.modules ? 'border-red-300' : 'border-gray-300'
                 }`}
               />
               {errors.modules && <p className="mt-1 text-sm text-red-600">{errors.modules}</p>}
-            </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Target className="w-4 h-4" />
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Target className="w-4 h-4" />
                 Goals*
-              </label>
-              <textarea
-                name="goals"
-                value={formData.goals}
-                onChange={handleChange}
-                rows={3}
+            </label>
+            <textarea
+              name="goals"
+              value={formData.goals}
+              onChange={handleChange}
+              rows={3}
                 className={`w-full p-3 border rounded-lg resize-none ${
                   errors.goals ? 'border-red-300' : 'border-gray-300'
                 }`}
-              />
+            />
               {errors.goals && <p className="mt-1 text-sm text-red-600">{errors.goals}</p>}
-            </div>
+          </div>
 
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                Challenges
-              </label>
-              <textarea
-                name="challenges"
-                value={formData.challenges}
-                onChange={handleChange}
-                rows={3}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Challenges
+            </label>
+            <textarea
+              name="challenges"
+              value={formData.challenges}
+              onChange={handleChange}
+              rows={3}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none"
                 placeholder="Optional"
-              />
-            </div>
+            />
+          </div>
 
-            <div>
+          <div>
               <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
                 Tone*
@@ -616,19 +650,19 @@ User: ${currentUser.email}
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
+              <FileText className="w-4 h-4" />
                 Proposal Type
-              </label>
-              <textarea
+            </label>
+            <textarea
                 name="proposalType"
                 value={formData.proposalType}
-                onChange={handleChange}
-                rows={3}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+              onChange={handleChange}
+              rows={3}
+              className="w-full p-3 border border-gray-300 rounded-lg resize-none"
                 placeholder="Optional"
-              />
-            </div>
+            />
           </div>
+        </div>
 
           <div className="flex justify-end gap-3">
             <button
@@ -637,25 +671,25 @@ User: ${currentUser.email}
             >
               Cancel
             </button>
-            <button
-              onClick={handleSubmit}
+        <button
+          onClick={handleSubmit}
               disabled={isSubmitting || isGenerating}
               className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 ${
                 isSubmitting || isGenerating
                   ? 'bg-blue-400 cursor-not-allowed' 
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
-            >
-              <Send className="w-4 h-4" />
+        >
+          <Send className="w-4 h-4" />
               {isGenerating ? 'Generating...' : isSubmitting ? 'Submitting...' : 'Generate Proposal'}
-            </button>
-          </div>
-        </div>
+        </button>
+      </div>
+    </div>
       </div>
 
       {/* Loading overlay */}
       {isGenerating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-50 backdrop-blur-sm">
           <div className="bg-white rounded-lg p-8 shadow-xl flex flex-col items-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             <p className="text-lg font-medium text-gray-700 mt-4">Generating your proposal...</p>
@@ -669,6 +703,11 @@ User: ${currentUser.email}
         isOpen={isProposalOpen}
         onClose={handleCloseProposal}
         proposal={generatedProposal}
+        proposalId={projectId}
+        onProposalUpdate={(updatedContent) => {
+          console.log("Updating proposal content with project ID:", projectId);
+          setGeneratedProposal(updatedContent);
+        }}
       />
 
       {/* Autofill Popup */}

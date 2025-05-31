@@ -292,9 +292,9 @@ const ProposalArchives = () => {
 
             {/* Modal Content */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Proposal Name</label>
-                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Proposal Name</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
                   {selectedProposal.name}
                 </p>
               </div>
@@ -306,52 +306,52 @@ const ProposalArchives = () => {
                     `${selectedProposal.user.name} (${selectedProposal.user.email})` : 
                     'No user assigned'
                   }
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
-                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                  {selectedProposal.clientName}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                  {selectedProposal.clientIndustry}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
-                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                  {selectedProposal.budget || 'Not specified'}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
-                  {formatDate(selectedProposal.createdAt)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Goals & Requirements</label>
-                <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
-                  {selectedProposal.goals}
+                  </p>
                 </div>
-              </div>
-
-              {selectedProposal.challenges && (
+                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Challenges</label>
-                  <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
-                    {selectedProposal.challenges}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.clientName}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                  {selectedProposal.clientIndustry}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {selectedProposal.budget || 'Not specified'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {formatDate(selectedProposal.createdAt)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Goals & Requirements</label>
+                  <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md max-h-32 overflow-y-auto">
+                  {selectedProposal.goals}
                   </div>
                 </div>
-              )}
+
+                {selectedProposal.challenges && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Challenges</label>
+                    <div className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md">
+                      {selectedProposal.challenges}
+                    </div>
+                  </div>
+                )}
 
               {selectedProposal.techStack && selectedProposal.techStack.length > 0 && (
                 <div>
@@ -366,7 +366,7 @@ const ProposalArchives = () => {
                       </span>
                     ))}
                   </div>
-                </div>
+              </div>
               )}
             </div>
 

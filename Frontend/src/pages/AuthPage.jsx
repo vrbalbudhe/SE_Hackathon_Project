@@ -153,7 +153,7 @@ function AuthPage() {
             </div>
           )}
 
-          <div>
+    <div>
             <button
               type="submit"
               disabled={loading}
