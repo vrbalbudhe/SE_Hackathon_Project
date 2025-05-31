@@ -1,6 +1,5 @@
+import React, { useState, useContext, useEffect } from "react";
 
-import React, { useState, useContext } from "react";
-import React, { useState, useEffect } from "react";
 import {
   X,
   Send,
@@ -343,7 +342,7 @@ User: ${currentUser.email}
         techStack: formData.techStack.split(",").map((s) => s.trim()),
         modules: formData.modules.split(",").map((s) => s.trim()),
         goals: formData.goals,
-        challenges: formData.challenges || null,
+        challenges: typeof formData.challenges === 'string' ? formData.challenges.trim() : null,
         proposalType: formData.proposalType || null,
         customPrompt: formData.customPrompt || null,
         latexContent: JSON.stringify(generatedContent),
@@ -398,16 +397,6 @@ User: ${currentUser.email}
     onClose();
   };
 
-  return (
-    <>
-      <div className="p-6 overflow-y-auto max-h-[90vh]">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900">Submit Report</h3>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
   return (
     <>
       <div className="p-6 overflow-y-auto max-h-[90vh]">
@@ -680,94 +669,7 @@ User: ${currentUser.email}
         isOpen={isProposalOpen}
         onClose={handleCloseProposal}
         proposal={generatedProposal}
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Goals*
-              </label>
-              <textarea
-                name="goals"
-                value={formData.goals}
-                onChange={handleChange}
-                rows={3}
-                className={`w-full p-3 border rounded-lg resize-none ${
-                  errors.goals ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.goals && <p className="mt-1 text-sm text-red-600">{errors.goals}</p>}
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                Challenges
-              </label>
-              <textarea
-                name="challenges"
-                value={formData.challenges}
-                onChange={handleChange}
-                rows={3}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                placeholder="Optional"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
-                Tone*
-              </label>
-              <textarea
-                name="tone"
-                value={formData.tone}
-                onChange={handleChange}
-                rows={3}
-                className={`w-full p-3 border rounded-lg resize-none ${
-                  errors.tone ? 'border-red-300' : 'border-gray-300'
-                }`}
-              />
-              {errors.tone && <p className="mt-1 text-sm text-red-600">{errors.tone}</p>}
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Proposal Type
-              </label>
-              <textarea
-                name="proposalType"
-                value={formData.proposalType}
-                onChange={handleChange}
-                rows={3}
-                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
-                placeholder="Optional"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 ${
-                isSubmitting 
-                  ? 'bg-blue-400 cursor-not-allowed' 
-                  : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-            >
-              <Send className="w-4 h-4" />
-              {isSubmitting ? 'Submitting...' : 'Submit Report'}
-            </button>
-          </div>
-        </div>
-      </div>
+      />
 
       {/* Autofill Popup */}
       <AutofillPopup
