@@ -1,3 +1,5 @@
+
+import React, { useState, useContext } from "react";
 import React, { useState, useEffect } from "react";
 import {
   X,
@@ -18,6 +20,8 @@ import {
 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import ProposalDisplay from "./ProposalDisplay";
+import { AuthContext } from "../../../contexts/AuthContext";
 
 // Autofill Popup Component
 const AutofillPopup = ({ isOpen, onClose, onSubmit, isLoading }) => {
@@ -109,6 +113,8 @@ const AutofillPopup = ({ isOpen, onClose, onSubmit, isLoading }) => {
 
 const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
   const { id: userId } = useParams();
+  const { currentUser } = useContext(AuthContext);
+  
   const [formData, setFormData] = useState({
     name: "",
     clientName: "",
@@ -129,6 +135,11 @@ const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedProposal, setGeneratedProposal] = useState(null);
+  const [isProposalOpen, setIsProposalOpen] = useState(false);
+
   
   // Autofill state
   const [showAutofillPopup, setShowAutofillPopup] = useState(false);
@@ -260,12 +271,71 @@ const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      setIsGenerating(true);
       
       if (!validateForm()) {
         setIsSubmitting(false);
+        setIsGenerating(false);
         return;
       }
 
+      if (!currentUser) {
+        setErrors({
+          submit: "You must be logged in to generate a proposal. Please log in and try again."
+        });
+        setIsSubmitting(false);
+        setIsGenerating(false);
+        return;
+      }
+
+      // First, generate the proposal using the AI
+      const proposalResponse = await axios.post(
+        "http://localhost:8000/api/proposal/generate",
+        {
+          title: formData.name,
+          content: `
+Project Overview:
+Client: ${formData.clientName}
+Industry: ${formData.clientIndustry}
+Timeline: ${formData.timelineStart} to ${formData.timelineEnd}
+Budget: ${formData.budget || 'Not specified'}
+
+Technical Stack:
+${formData.techStack.split(',').map(tech => `• ${tech.trim()}`).join('\n')}
+
+Project Modules:
+${formData.modules.split(',').map(module => `• ${module.trim()}`).join('\n')}
+
+Project Goals:
+${formData.goals}
+
+${formData.challenges ? `Challenges:\n${formData.challenges}` : ''}
+
+Communication Tone:
+${formData.tone}
+
+Additional Information:
+${formData.proposalType ? `Proposal Type: ${formData.proposalType}` : ''}
+User: ${currentUser.email}
+          `,
+          userEmail: currentUser.email
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true
+        }
+      );
+
+      if (!proposalResponse.data.success) {
+        throw new Error(proposalResponse.data.message || "Failed to generate proposal");
+      }
+
+      // Store the generated proposal
+      const generatedContent = proposalResponse.data.proposal;
+      setGeneratedProposal(generatedContent);
+      setIsProposalOpen(true);
+
+      // Now create the project in the database
       const payload = {
         ...formData,
         timelineStart: new Date(formData.timelineStart),
@@ -276,32 +346,34 @@ const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
         challenges: formData.challenges || null,
         proposalType: formData.proposalType || null,
         customPrompt: formData.customPrompt || null,
-        latexContent: formData.latexContent || JSON.stringify({
-          title: formData.name,
-          content: formData.goals
-        }),
+        latexContent: JSON.stringify(generatedContent),
         budget: formData.budget || null,
-        userId,
+        userId: currentUser.id,
+        userEmail: currentUser.email
       };
 
-      const res = await axios.post(
+      const projectResponse = await axios.post(
         "http://localhost:8000/api/project/add",
-        payload
+        payload,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          withCredentials: true
+        }
       );
 
-      if (res.data.success) {
-        alert("Project submitted successfully!");
-        onClose();
-      } else {
-        setErrors({ submit: res.data.message || "Failed to submit project" });
+      if (!projectResponse.data.success) {
+        throw new Error(projectResponse.data.message || "Failed to save project");
       }
+
     } catch (err) {
       console.error("Project submission error:", err);
       setErrors({
         submit: err.response?.data?.message || "Error submitting the project. Please check all required fields."
       });
+      setIsProposalOpen(false);
     } finally {
       setIsSubmitting(false);
+      setIsGenerating(false);
     }
   };
 
@@ -320,6 +392,22 @@ const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
     }
   };
 
+  const handleCloseProposal = () => {
+    setIsProposalOpen(false);
+    setGeneratedProposal(null);
+    onClose();
+  };
+
+  return (
+    <>
+      <div className="p-6 overflow-y-auto max-h-[90vh]">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold text-gray-900">Submit Report</h3>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
   return (
     <>
       <div className="p-6 overflow-y-auto max-h-[90vh]">
@@ -487,6 +575,111 @@ const ReportForm = ({ onClose, autofillData, onAutofillDataUsed }) => {
               />
               {errors.modules && <p className="mt-1 text-sm text-red-600">{errors.modules}</p>}
             </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Goals*
+              </label>
+              <textarea
+                name="goals"
+                value={formData.goals}
+                onChange={handleChange}
+                rows={3}
+                className={`w-full p-3 border rounded-lg resize-none ${
+                  errors.goals ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.goals && <p className="mt-1 text-sm text-red-600">{errors.goals}</p>}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Challenges
+              </label>
+              <textarea
+                name="challenges"
+                value={formData.challenges}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                placeholder="Optional"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Tone*
+              </label>
+              <textarea
+                name="tone"
+                value={formData.tone}
+                onChange={handleChange}
+                rows={3}
+                className={`w-full p-3 border rounded-lg resize-none ${
+                  errors.tone ? 'border-red-300' : 'border-gray-300'
+                }`}
+              />
+              {errors.tone && <p className="mt-1 text-sm text-red-600">{errors.tone}</p>}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Proposal Type
+              </label>
+              <textarea
+                name="proposalType"
+                value={formData.proposalType}
+                onChange={handleChange}
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting || isGenerating}
+              className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 ${
+                isSubmitting || isGenerating
+                  ? 'bg-blue-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+              {isGenerating ? 'Generating...' : isSubmitting ? 'Submitting...' : 'Generate Proposal'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Loading overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+          <div className="bg-white rounded-lg p-8 shadow-xl flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="text-lg font-medium text-gray-700 mt-4">Generating your proposal...</p>
+            <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
+          </div>
+        </div>
+      )}
+
+      {/* Proposal Display Modal */}
+      <ProposalDisplay
+        isOpen={isProposalOpen}
+        onClose={handleCloseProposal}
+        proposal={generatedProposal}
 
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
