@@ -18,6 +18,7 @@ datasource db {
  * - avatar
  * - phone
  * - otp
+ * - role (default: "User")
  * @Relations:
  * (1) one User -> Many Projects
  */
@@ -29,6 +30,7 @@ model User {
   phone    String?
   avatar   String?
   otp      String?
+  role     String  @default("User")
 
   // Date Metadata
   createdAt DateTime   @default(now())

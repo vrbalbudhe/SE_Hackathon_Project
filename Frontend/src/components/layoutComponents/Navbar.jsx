@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import LoginForm from "../authForms/loginForm";
 import { AuthContext } from "../../contexts/AuthContext";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -10,6 +10,7 @@ const Navbar = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const registerModalRef = useRef(null);
 
   const [slidebarOpen, setIsSlideBarOpen] = useState(false);
   const { currentUser, refreshLoginContext, setLoading, loading } =
@@ -23,6 +24,25 @@ const Navbar = () => {
   const handleRegisterToggle = () => {
     setIsRegister((prev) => !prev);
   };
+
+  // Handle click outside for both dropdown and register modal
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close register modal if clicking outside
+      if (isRegister && registerModalRef.current && !registerModalRef.current.contains(event.target)) {
+        setIsRegister(false);
+      }
+      // Close dropdown if clicking outside
+      if (isDropdownOpen && !event.target.closest('.dropdown-container')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isRegister, isDropdownOpen]);
 
   const handleLogout = async () => {
     setError("");
@@ -98,7 +118,7 @@ const Navbar = () => {
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
 
-          <div className="relative">
+          <div className="relative dropdown-container">
             <div
               onClick={handleDropdownToggle}
               className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center cursor-pointer"
@@ -135,7 +155,13 @@ const Navbar = () => {
       )}
 
       {isLogin && !isRegister && <LoginForm setIsLogin={setIsLogin} />}
-      {isRegister && !isLogin && <RegisterForm setIsRegister={setIsRegister} />}
+      {isRegister && !isLogin && (
+        <div ref={registerModalRef} className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <RegisterForm setIsRegister={setIsRegister} />
+          </div>
+        </div>
+      )}
 
       {!currentUser && (
         <div className="flex items-center space-x-2">
@@ -146,7 +172,7 @@ const Navbar = () => {
             <p>Register</p>
           </div>
           <div
-            onClick={() => handleLoginToggle()}
+            onClick={() => navigate('/auth')}
             className="px-5 cursor-pointer text-white py-1.5 rounded-md text-sm flex justify-center items-center hover:bg-gray-700 bg-gray-800"
           >
             <p>Login</p>
