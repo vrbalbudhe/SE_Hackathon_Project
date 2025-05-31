@@ -19,6 +19,8 @@ const ProposalRoutes = require("./routes/proposalRoutes/proposalRoutes");
 const AnalyticsRoutes = require("./routes/adminRoutes/analyticsRoutes");
 const ProposalAdminRoutes = require("./routes/adminRoutes/proposalRoutes");
 const AdminRoutes = require("./routes/adminRoutes/adminRoutes");
+const ProjectRoutes = require("./routes/projectRoutes/ProjectRoutes");
+
 
 app.use(express.json());
 app.use(cookieParser());
@@ -47,11 +49,22 @@ app.use(passport.session());
 app.use(`${process.env.SITE_ADDRESS || "/api"}/auth`, AuthRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/user`, UserRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/proposal`, ProposalRoutes);
+app.use(`${process.env.SITE_ADDRESS || "/api"}/project`, ProjectRoutes);
 
 // Admin routes - specific routes BEFORE general admin routes
 app.use(`${process.env.SITE_ADDRESS || "/api"}/admin/analytics`, AnalyticsRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/admin/proposals`, ProposalAdminRoutes);
 app.use(`${process.env.SITE_ADDRESS || "/api"}/admin`, AdminRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: "Something went wrong!",
+    error: err.message
+  });
+});
 
 const port = 8000 || process.env.port;
 const StartConnection = async () => {
@@ -63,3 +76,5 @@ const StartConnection = async () => {
 };
 
 StartConnection();
+
+module.exports = app;

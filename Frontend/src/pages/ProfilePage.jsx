@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import ProfileSidebar from "../components/profile/ProfileSidebar";
 import ReportSection from "../components/profile/report/ReportSection";
-import ProfileMainPage from "../components/profile/home/ProfileMainPage";
+import UserHome from "../components/profile/home/UserHome";
+import UserProfile from "../components/profile/profile/UserProfile";
+import UserSettings from "../components/profile/settings/UserSettings";
 import UserProposalArchives from "../components/profile/archives/UserProposalArchives";
 
 function ProfilePage() {
@@ -17,9 +19,11 @@ function ProfilePage() {
             setSelectedIcon={setSelectedIcon}
           />
         </div>
-        {selectedIcon === "Home" && <ProfileMainPage />}
+        {selectedIcon === "Home" && <UserHome />}
         {selectedIcon === "Report" && <ReportSection />}
         {selectedIcon === "Archives" && <UserProposalArchives />}
+        {selectedIcon === "Profile" && <UserProfile />}
+        {selectedIcon === "Settings" && <UserSettings />}
       </div>
     </div>
   );
